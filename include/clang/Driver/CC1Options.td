@@ -342,6 +342,9 @@ def fmodule_implementation_of : Separate<["-"], "fmodule-implementation-of">,
 def fmodule_map_file_home_is_cwd : Flag<["-"], "fmodule-map-file-home-is-cwd">,
   HelpText<"Use the current working directory as the home directory of "
            "module maps specified by -fmodule-map-file=<FILE>">;
+def fmodule_feature : Separate<["-"], "fmodule-feature">,
+  MetaVarName<"<feature>">,
+  HelpText<"Enable <feature> in module map requires declarations">;
 
 let Group = Action_Group in {
 
@@ -580,7 +583,7 @@ def cl_finite_math_only : Flag<["-"], "cl-finite-math-only">,
   HelpText<"OpenCL only. Allow floating-point optimizations that assume arguments and results are not NaNs or +-Inf.">;
 def cl_kernel_arg_info : Flag<["-"], "cl-kernel-arg-info">,
   HelpText<"OpenCL only. Generate kernel argument metadata.">;
-def cl_no_signed_zeros : Flag<["-"], "cl-no-signed-zeros">,
+def : Flag<["-"], "cl-no-signed-zeros">, Alias<fno_signed_zeros>,
   HelpText<"OpenCL only. Allow optimizations to ignore the signedness of the floating-point zero.">;
 def cl_unsafe_math_optimizations : Flag<["-"], "cl-unsafe-math-optimizations">,
   HelpText<"OpenCL only. Allow unsafe floating-point optimizations.  Also implies -cl-no-signed-zeros and -cl-mad-enable">;

@@ -6081,6 +6081,12 @@ Decl *ASTReader::GetExternalDecl(uint32_t ID) {
   return GetDecl(ID);
 }
 
+template<typename TemplateSpecializationDecl>
+static void completeRedeclChainForTemplateSpecialization(Decl *D) {
+  if (auto *TSD = dyn_cast<TemplateSpecializationDecl>(D))
+    TSD->getSpecializedTemplate()->LoadLazySpecializations();
+}
+
 void ASTReader::CompleteRedeclChain(const Decl *D) {
   if (NumCurrentElementsDeserializing) {
     // We arrange to not care about the complete redeclaration chain while we're
@@ -6113,6 +6119,15 @@ void ASTReader::CompleteRedeclChain(const Decl *D) {
       // FIXME: It'd be nice to do something a bit more targeted here.
       D->getDeclContext()->decls_begin();
     }
+  }
+
+  if (auto *CTSD = dyn_cast<ClassTemplateSpecializationDecl>(D))
+    CTSD->getSpecializedTemplate()->LoadLazySpecializations();
+  if (auto *VTSD = dyn_cast<VarTemplateSpecializationDecl>(D))
+    VTSD->getSpecializedTemplate()->LoadLazySpecializations();
+  if (auto *FD = dyn_cast<FunctionDecl>(D)) {
+    if (auto *Template = FD->getPrimaryTemplate())
+      Template->LoadLazySpecializations();
   }
 }
 
@@ -7161,13 +7176,17 @@ void ASTReader::ReadMethodPool(Selector Sel) {
   Sema &S = *getSema();
   Sema::GlobalMethodPool::iterator Pos
     = S.MethodPool.insert(std::make_pair(Sel, Sema::GlobalMethods())).first;
-  
-  addMethodsToPool(S, Visitor.getInstanceMethods(), Pos->second.first);
-  addMethodsToPool(S, Visitor.getFactoryMethods(), Pos->second.second);
+
   Pos->second.first.setBits(Visitor.getInstanceBits());
   Pos->second.first.setHasMoreThanOneDecl(Visitor.instanceHasMoreThanOneDecl());
   Pos->second.second.setBits(Visitor.getFactoryBits());
   Pos->second.second.setHasMoreThanOneDecl(Visitor.factoryHasMoreThanOneDecl());
+
+  // Add methods to the global pool *after* setting hasMoreThanOneDecl, since
+  // when building a module we keep every method individually and may need to
+  // update hasMoreThanOneDecl as we add the methods.
+  addMethodsToPool(S, Visitor.getInstanceMethods(), Pos->second.first);
+  addMethodsToPool(S, Visitor.getFactoryMethods(), Pos->second.second);
 }
 
 void ASTReader::ReadKnownNamespaces(
@@ -8294,7 +8313,12 @@ void ASTReader::finishPendingActions() {
       loadDeclUpdateRecords(Update.first, Update.second);
     }
   }
-  
+
+  // At this point, all update records for loaded decls are in place, so any
+  // fake class definitions should have become real.
+  assert(PendingFakeDefinitionData.empty() &&
+         "faked up a class definition but never saw the real one");
+
   // If we deserialized any C++ or Objective-C class definitions, any
   // Objective-C protocol definitions, or any redeclarable templates, make sure
   // that all redeclarations point to the definitions. Note that this can only 
