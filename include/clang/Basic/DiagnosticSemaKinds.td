@@ -2259,13 +2259,8 @@ def warn_attribute_wrong_decl_type : Warning<
   "struct or union|struct, union or class|types|"
   "Objective-C instance methods|init methods of interface or class extension declarations|"
   "variables, functions and classes|Objective-C protocols|"
-<<<<<<< HEAD
-  "functions and global variables|structs or typedefs|"
-  "interface or protocol declarations|kernel functions|variables, global variables or type definitions}1">,
-=======
-  "functions and global variables|structs, unions, and typedefs|structs and typedefs|"
+  "functions and global variables|structs, and typedefs|structs and typedefs|"
   "interface or protocol declarations|kernel functions}1">,
->>>>>>> master
   InGroup<IgnoredAttributes>;
 def err_attribute_wrong_decl_type : Error<warn_attribute_wrong_decl_type.Text>;
 def warn_type_attribute_wrong_type : Warning<
